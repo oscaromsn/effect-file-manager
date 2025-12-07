@@ -1,6 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
-import { type ActiveUpload, cancelUploadAtom, uploadAtom } from "@/routes/files/-files/files-atoms";
+import {
+  type ActiveUpload,
+  cancelUploadAtom,
+  ImageTooLargeAfterCompression,
+  uploadAtom,
+} from "@/routes/files/-files/files-atoms";
 import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react";
 import * as Option from "effect/Option";
 import { AlertCircleIcon, Loader2Icon, XIcon } from "lucide-react";
@@ -35,16 +40,26 @@ export const PendingFileItem: React.FC<PendingFileItemProps> = ({ upload }) => {
   const phase = Option.getOrNull(Result.value(result));
   const isError = Result.isFailure(result) && !Result.isInterrupted(result);
 
+  const errorMessage = Result.error(result).pipe(
+    Option.filter((error): error is ImageTooLargeAfterCompression =>
+      error instanceof ImageTooLargeAfterCompression,
+    ),
+    Option.map((error) => `Image too large (${formatFileSize(error.compressedSizeBytes)} after compression)`),
+    Option.getOrElse(() => "Upload failed"),
+  );
+
   const statusLabel =
-    phase?._tag === "Uploading"
-      ? "Uploading..."
-      : phase?._tag === "Syncing"
-        ? "Syncing..."
-        : phase?._tag === "Done"
-          ? "Done"
-          : isError
-            ? "Failed"
-            : "Starting...";
+    phase?._tag === "Compressing"
+      ? "Compressing..."
+      : phase?._tag === "Uploading"
+        ? "Uploading..."
+        : phase?._tag === "Syncing"
+          ? "Syncing..."
+          : phase?._tag === "Done"
+            ? "Done"
+            : isError
+              ? errorMessage
+              : "Starting...";
 
   return (
     <div
@@ -79,7 +94,7 @@ export const PendingFileItem: React.FC<PendingFileItemProps> = ({ upload }) => {
         </div>
       </div>
 
-      {phase?._tag === "Uploading" && (
+      {(phase?._tag === "Compressing" || phase?._tag === "Uploading") && (
         <Button variant="ghost" size="icon" className="size-8" onClick={() => cancel(upload.id)}>
           <XIcon className="size-4" />
         </Button>

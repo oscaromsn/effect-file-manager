@@ -3,6 +3,7 @@ import { Atom, Registry, Result } from "@effect-atom/atom-react";
 import * as HttpClient from "@effect/platform/HttpClient";
 import * as HttpClientError from "@effect/platform/HttpClientError";
 import * as HttpClientResponse from "@effect/platform/HttpClientResponse";
+import * as RpcTest from "@effect/rpc/RpcTest";
 import { afterEach, beforeEach, describe, expect, it, vitest } from "@effect/vitest";
 import { Folder, type FolderId } from "@example/domain/api/files/files-rpc";
 import * as DateTime from "effect/DateTime";
@@ -11,7 +12,16 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
-import { activeUploadsAtom, Api, FilePicker, FileSync, runtime, uploadAtom } from "./files-atoms";
+import {
+  activeUploadsAtom,
+  Api,
+  FilePicker,
+  FileSync,
+  ImageCompressionClient,
+  runtime,
+  uploadAtom,
+} from "./files-atoms";
+import { ImageCompressionRpc } from "./internal/image-compression-rpc";
 
 // ================================
 // Test Constants
@@ -169,6 +179,26 @@ const makeEventStreamMock = () => {
   return { layer, events };
 };
 
+const makeImageCompressionMock = () => {
+  const handlers = ImageCompressionRpc.toLayer(
+    ImageCompressionRpc.of({
+      compress: (payload) =>
+        Effect.succeed({
+          data: payload.data,
+          mimeType: payload.mimeType,
+        }),
+    }),
+  );
+
+  return Layer.scoped(
+    ImageCompressionClient,
+    Effect.gen(function* () {
+      const client = yield* RpcTest.makeClient(ImageCompressionRpc);
+      return ImageCompressionClient.make({ client });
+    }),
+  ).pipe(Layer.provide(handlers));
+};
+
 // ================================
 // Test Layer Composition
 // ================================
@@ -183,6 +213,7 @@ const makeTestLayer = (options?: {
   const filePickerLayer = makeFilePickerMock(options?.file ?? null);
   const { layer: fileSyncLayer, triggerFileArrival, completionSignals } = makeFileSyncMock();
   const { layer: eventStreamLayer, events } = makeEventStreamMock();
+  const imageCompressionLayer = makeImageCompressionMock();
 
   const testLayer = Layer.mergeAll(
     apiLayer,
@@ -190,6 +221,7 @@ const makeTestLayer = (options?: {
     filePickerLayer,
     fileSyncLayer,
     eventStreamLayer,
+    imageCompressionLayer,
   );
 
   return {
