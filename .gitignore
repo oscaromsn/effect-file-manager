@@ -29,3 +29,8 @@ CLAUDE.local.md
 
 # BAML generated code
 baml_client
+
+# Dev tools
+.repomixignore
+repomix.config.json
+repomix-output.xml
