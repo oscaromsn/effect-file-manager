@@ -25,7 +25,8 @@
     "dev:server": "pnpm --filter @example/server dev",
     "dev:client": "pnpm --filter @example/client dev",
     "db:migrate": "pnpm --filter @example/server db:migrate",
-    "db:reset": "pnpm --filter @example/server db:reset"
+    "db:reset": "pnpm --filter @example/server db:reset",
+    "baml:generate": "bunx baml-cli generate --from packages/server/baml_src"
   },
   "devDependencies": {
     "@effect/language-service": "0.58.4",
