@@ -9,10 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ResumeRouteRouteImport } from './routes/resume/route'
 import { Route as FilesRouteRouteImport } from './routes/files/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ResumeIndexRouteImport } from './routes/resume/index'
 import { Route as FilesIndexRouteImport } from './routes/files/index'
 
+const ResumeRouteRoute = ResumeRouteRouteImport.update({
+  id: '/resume',
+  path: '/resume',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FilesRouteRoute = FilesRouteRouteImport.update({
   id: '/files',
   path: '/files',
@@ -23,6 +30,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResumeIndexRoute = ResumeIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ResumeRouteRoute,
+} as any)
 const FilesIndexRoute = FilesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -32,33 +44,46 @@ const FilesIndexRoute = FilesIndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/files': typeof FilesRouteRouteWithChildren
+  '/resume': typeof ResumeRouteRouteWithChildren
   '/files/': typeof FilesIndexRoute
+  '/resume/': typeof ResumeIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/files': typeof FilesIndexRoute
+  '/resume': typeof ResumeIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/files': typeof FilesRouteRouteWithChildren
+  '/resume': typeof ResumeRouteRouteWithChildren
   '/files/': typeof FilesIndexRoute
+  '/resume/': typeof ResumeIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/files' | '/files/'
+  fullPaths: '/' | '/files' | '/resume' | '/files/' | '/resume/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/files'
-  id: '__root__' | '/' | '/files' | '/files/'
+  to: '/' | '/files' | '/resume'
+  id: '__root__' | '/' | '/files' | '/resume' | '/files/' | '/resume/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   FilesRouteRoute: typeof FilesRouteRouteWithChildren
+  ResumeRouteRoute: typeof ResumeRouteRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/resume': {
+      id: '/resume'
+      path: '/resume'
+      fullPath: '/resume'
+      preLoaderRoute: typeof ResumeRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/files': {
       id: '/files'
       path: '/files'
@@ -72,6 +97,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/resume/': {
+      id: '/resume/'
+      path: '/'
+      fullPath: '/resume/'
+      preLoaderRoute: typeof ResumeIndexRouteImport
+      parentRoute: typeof ResumeRouteRoute
     }
     '/files/': {
       id: '/files/'
@@ -95,9 +127,22 @@ const FilesRouteRouteWithChildren = FilesRouteRoute._addFileChildren(
   FilesRouteRouteChildren,
 )
 
+interface ResumeRouteRouteChildren {
+  ResumeIndexRoute: typeof ResumeIndexRoute
+}
+
+const ResumeRouteRouteChildren: ResumeRouteRouteChildren = {
+  ResumeIndexRoute: ResumeIndexRoute,
+}
+
+const ResumeRouteRouteWithChildren = ResumeRouteRoute._addFileChildren(
+  ResumeRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   FilesRouteRoute: FilesRouteRouteWithChildren,
+  ResumeRouteRoute: ResumeRouteRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

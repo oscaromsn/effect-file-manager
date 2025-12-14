@@ -12,12 +12,20 @@ function Home() {
         A demonstration of file uploads with UploadThing and Effect (WebSocket RPC, real-time
         events).
       </p>
-      <Link
-        to="/files"
-        className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-      >
-        Go to Files
-      </Link>
+      <div className="flex gap-4">
+        <Link
+          to="/files"
+          className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          Go to Files
+        </Link>
+        <Link
+          to="/resume"
+          className="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
+        >
+          Resume Parser
+        </Link>
+      </div>
     </div>
   );
 }
