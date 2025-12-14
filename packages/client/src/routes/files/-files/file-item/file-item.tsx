@@ -7,7 +7,7 @@ import { useAtomSet, useAtomValue } from "@effect-atom/atom-react";
 import { UploadedFile } from "@example/domain/api/files/files-rpc";
 import * as Arr from "effect/Array";
 import * as DateTime from "effect/DateTime";
-import { CheckCircle2Icon, DownloadIcon } from "lucide-react";
+import { CheckCircle2Icon, DownloadIcon, FileTextIcon } from "lucide-react";
 import React from "react";
 
 const formatFileSize = (sizeStr: string): string => {
@@ -68,8 +68,8 @@ export const FileItem: React.FC<FileItemProps> = ({ file }) => {
       />
 
       <div className="flex items-center gap-3">
-        <div className="relative rounded-md overflow-hidden shrink-0">
-          <img src={file.uploadthingUrl} alt={file.name} className="size-12 object-cover" />
+        <div className="relative rounded-md overflow-hidden shrink-0 size-12 flex items-center justify-center bg-muted">
+          <FileTextIcon className="size-6 text-muted-foreground" />
           {isSelected ? (
             <div className="absolute inset-0 flex items-center justify-center backdrop-blur-[2px] bg-black/40">
               <CheckCircle2Icon className="size-6 text-white drop-shadow-lg" />

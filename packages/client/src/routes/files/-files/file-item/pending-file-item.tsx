@@ -3,7 +3,6 @@ import { cn } from "@/lib/cn";
 import {
   type ActiveUpload,
   cancelUploadAtom,
-  ImageTooLargeAfterCompression,
   uploadAtom,
 } from "@/routes/files/-files/files-atoms";
 import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react";
@@ -40,26 +39,16 @@ export const PendingFileItem: React.FC<PendingFileItemProps> = ({ upload }) => {
   const phase = Option.getOrNull(Result.value(result));
   const isError = Result.isFailure(result) && !Result.isInterrupted(result);
 
-  const errorMessage = Result.error(result).pipe(
-    Option.filter((error): error is ImageTooLargeAfterCompression =>
-      error instanceof ImageTooLargeAfterCompression,
-    ),
-    Option.map((error) => `Image too large (${formatFileSize(error.compressedSizeBytes)} after compression)`),
-    Option.getOrElse(() => "Upload failed"),
-  );
-
   const statusLabel =
-    phase?._tag === "Compressing"
-      ? "Compressing..."
-      : phase?._tag === "Uploading"
-        ? "Uploading..."
-        : phase?._tag === "Syncing"
-          ? "Syncing..."
-          : phase?._tag === "Done"
-            ? "Done"
-            : isError
-              ? errorMessage
-              : "Starting...";
+    phase?._tag === "Uploading"
+      ? "Uploading..."
+      : phase?._tag === "Syncing"
+        ? "Syncing..."
+        : phase?._tag === "Done"
+          ? "Done"
+          : isError
+            ? "Upload failed"
+            : "Starting...";
 
   return (
     <div
@@ -94,7 +83,7 @@ export const PendingFileItem: React.FC<PendingFileItemProps> = ({ upload }) => {
         </div>
       </div>
 
-      {(phase?._tag === "Compressing" || phase?._tag === "Uploading") && (
+      {phase?._tag === "Uploading" && (
         <Button variant="ghost" size="icon" className="size-8" onClick={() => cancel(upload.id)}>
           <XIcon className="size-4" />
         </Button>

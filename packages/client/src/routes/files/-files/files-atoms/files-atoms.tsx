@@ -2,11 +2,9 @@ import { makeAtomRuntime } from "@/lib/atom";
 import { DomainRpcClient } from "@/lib/domain-rpc-client";
 import { EventStream, makeEventStreamAtom } from "@/lib/event-stream-atoms";
 import { Atom, Registry, Result } from "@effect-atom/atom-react";
-import * as BrowserWorker from "@effect/platform-browser/BrowserWorker";
 import * as FetchHttpClient from "@effect/platform/FetchHttpClient";
 import * as HttpBody from "@effect/platform/HttpBody";
 import * as HttpClient from "@effect/platform/HttpClient";
-import * as RpcClient from "@effect/rpc/RpcClient";
 import {
   CreateFolderRpc,
   DeleteFilesRpc,
@@ -31,8 +29,6 @@ import * as Option from "effect/Option";
 import * as Schedule from "effect/Schedule";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
-import { ImageCompressionRpc } from "./internal/image-compression-rpc";
-import ImageCompressionWorker from "./internal/image-compression-worker?worker";
 
 // ================================
 // Api Service
@@ -64,41 +60,10 @@ export class Api extends Effect.Service<Api>()(
 ) {}
 
 // ================================
-// Image Compression Client
-// ================================
-
-const ImageCompressionProtocol = RpcClient.layerProtocolWorker({
-  size: 2,
-  concurrency: 1,
-}).pipe(
-  Layer.provide(BrowserWorker.layerPlatform(() => new ImageCompressionWorker())),
-  Layer.orDie,
-);
-
-export class ImageCompressionClient extends Effect.Service<ImageCompressionClient>()(
-  "@example/client/routes/files/-files/files-atoms/ImageCompressionClient",
-  {
-    dependencies: [ImageCompressionProtocol],
-    scoped: Effect.gen(function* () {
-      return { client: yield* RpcClient.make(ImageCompressionRpc) };
-    }),
-  },
-) {}
-
-// ================================
 // Upload Types
 // ================================
 
-export class ImageTooLargeAfterCompression extends Data.TaggedError(
-  "ImageTooLargeAfterCompression",
-)<{
-  readonly fileName: string;
-  readonly originalSizeBytes: number;
-  readonly compressedSizeBytes: number;
-}> {}
-
 export type UploadPhase = Data.TaggedEnum<{
-  Compressing: {};
   Uploading: {};
   Syncing: {};
   Done: {};
@@ -120,14 +85,11 @@ type UploadInput = {
 
 type UploadState = Data.TaggedEnum<{
   Idle: { input: UploadInput };
-  Compressing: { input: UploadInput };
-  Uploading: { input: UploadInput; fileToUpload: File };
+  Uploading: { input: UploadInput };
   Syncing: { input: UploadInput; fileKey: string };
   Done: {};
 }>;
 const UploadState = Data.taggedEnum<UploadState>();
-
-const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1 MB
 
 export class FileSync extends Effect.Service<FileSync>()(
   "@example/client/routes/files/-files/files-atoms/FileSync",
@@ -207,7 +169,7 @@ export class FilePicker extends Effect.Service<FilePicker>()(
         Effect.sync(() => {
           const input = document.createElement("input");
           input.type = "file";
-          input.accept = "image/*";
+          input.accept = "application/pdf,.pdf";
           input.style.display = "none";
           document.body.appendChild(input);
           return input;
@@ -251,7 +213,6 @@ export const runtime = makeAtomRuntime(
     FilePicker.Default,
     EventStream.Default,
     FileSync.Default,
-    ImageCompressionClient.Default,
   ),
 );
 
@@ -281,90 +242,39 @@ const makeUploadStream = (uploadId: string, input: UploadInput) =>
       }),
     );
     const fileSync = yield* FileSync;
-    const imageCompression = yield* ImageCompressionClient;
 
     const transition = (state: UploadState) =>
       Effect.gen(function* () {
         switch (state._tag) {
           case "Idle": {
-            // If file is too large and is an image, compress first
-            if (
-              state.input.file.size > MAX_FILE_SIZE_BYTES &&
-              state.input.file.type.startsWith("image/")
-            ) {
-              return Option.some<readonly [UploadPhase, UploadState]>([
-                UploadPhase.Compressing(),
-                UploadState.Compressing({ input: state.input }),
-              ]);
-            }
-            // Otherwise, upload directly
             return Option.some<readonly [UploadPhase, UploadState]>([
               UploadPhase.Uploading(),
-              UploadState.Uploading({ input: state.input, fileToUpload: state.input.file }),
-            ]);
-          }
-
-          case "Compressing": {
-            const maxAttempts = 3;
-
-            const compressed = yield* Effect.iterate(
-              {
-                data: new Uint8Array(yield* Effect.promise(() => state.input.file.arrayBuffer())),
-                mimeType: state.input.file.type,
-                attempt: 0,
-              },
-              {
-                while: (s) => s.data.length > MAX_FILE_SIZE_BYTES && s.attempt < maxAttempts,
-                body: (s) =>
-                  Effect.map(
-                    imageCompression.client.compress({
-                      data: s.data,
-                      mimeType: s.mimeType,
-                      fileName: state.input.file.name,
-                      maxSizeMB: 1,
-                    }),
-                    (result) => ({
-                      data: result.data,
-                      mimeType: result.mimeType,
-                      attempt: s.attempt + 1,
-                    }),
-                  ),
-              },
-            );
-
-            if (compressed.data.length > MAX_FILE_SIZE_BYTES) {
-              return yield* new ImageTooLargeAfterCompression({
-                fileName: state.input.file.name,
-                originalSizeBytes: state.input.file.size,
-                compressedSizeBytes: compressed.data.length,
-              });
-            }
-
-            const compressedFile = new File([compressed.data], state.input.file.name, {
-              type: compressed.mimeType,
-            });
-
-            return Option.some<readonly [UploadPhase, UploadState]>([
-              UploadPhase.Uploading(),
-              UploadState.Uploading({ input: state.input, fileToUpload: compressedFile }),
+              UploadState.Uploading({ input: state.input }),
             ]);
           }
 
           case "Uploading": {
+            const file = state.input.file;
             const { presignedUrl, fields, fileKey } = yield* api.initiateUpload({
-              fileName: state.fileToUpload.name,
-              fileSize: state.fileToUpload.size,
-              mimeType: state.fileToUpload.type,
+              fileName: file.name,
+              fileSize: file.size,
+              mimeType: file.type,
               folderId: state.input.folderId,
             });
 
             const formData = new FormData();
+            // v6 includes extra fields, v7 only needs the file
             for (const [key, value] of Object.entries(fields)) {
               formData.append(key, value);
             }
-            formData.append("file", state.fileToUpload);
+            formData.append("file", file);
 
-            yield* httpClient.post(presignedUrl, { body: HttpBody.formData(formData) });
+            // v7 uses PUT, v6 used POST
+            if (Object.keys(fields).length === 0) {
+              yield* httpClient.put(presignedUrl, { body: HttpBody.formData(formData) });
+            } else {
+              yield* httpClient.post(presignedUrl, { body: HttpBody.formData(formData) });
+            }
 
             return Option.some<readonly [UploadPhase, UploadState]>([
               UploadPhase.Syncing(),
