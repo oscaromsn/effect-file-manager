@@ -6,6 +6,10 @@ client<llm> CustomGPT5 {
   options {
     model "gpt-5"
     api_key env.OPENAI_API_KEY
+    // OpenAI requires PDFs to be sent as base64, not URLs
+    media_url_handler {
+      pdf "send_base64"
+    }
   }
 }
 

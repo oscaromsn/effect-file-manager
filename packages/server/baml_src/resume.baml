@@ -1,4 +1,4 @@
-// Defining a data model.
+// Defining a data model for resume parsing.
 class Resume {
   name string
   email string
@@ -6,14 +6,19 @@ class Resume {
   skills string[]
 }
 
-// Create a function to extract the resume from a string.
+// Extract structured resume data from a PDF document.
 function ExtractResume(document: pdf) -> Resume {
-  // Specify a client as provider/model-name
-  // You can also use custom LLM params with a custom client name from clients.baml like "client CustomGPT5" or "client CustomSonnet4"
-  client "openai-responses/gpt-5-mini" // Set OPENAI_API_KEY to use this client.
+  client CustomGPT5
   prompt #"
-    Extract from this content:
-    {{ role.user}} {{ resume }}
+    You are a resume parser. Extract the following information from this resume PDF document.
+
+    {{ _.role("user") }} {{ document }}
+
+    Extract:
+    - Full name of the candidate
+    - Email address
+    - List of work experiences (company and role, e.g., "Software Engineer at Google")
+    - List of skills mentioned
 
     {{ ctx.output_format }}
   "#
