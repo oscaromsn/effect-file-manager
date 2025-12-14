@@ -1,5 +1,17 @@
 import { useAtomValue } from "@effect-atom/atom-react";
-import { AlertCircle, Briefcase, Loader2, Mail, Sparkles, User } from "lucide-react";
+import {
+  AlertCircle,
+  Award,
+  BookOpen,
+  Briefcase,
+  Globe,
+  Loader2,
+  Mail,
+  MapPin,
+  Phone,
+  Sparkles,
+  User,
+} from "lucide-react";
 import { Banner } from "@/components/ui/banner";
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
@@ -11,14 +23,91 @@ import {
   localResumesAtom,
   type PartialResumeData,
 } from "../resume-atoms";
-import type { ResumeData } from "@example/domain/api/resume/resume-rpc";
+import type { ResumeData, Experience, Education } from "@example/domain/api/resume/resume-rpc";
 
 type ResumeContentProps = {
   data: PartialResumeData | ResumeData;
   isStreaming?: boolean;
 };
 
+const formatDateRange = (exp: Experience): string => {
+  const startYear = exp.startYear;
+  const endYear = exp.isCurrent ? "Present" : exp.endYear;
+
+  if (!startYear) return "";
+  if (!endYear) return String(startYear);
+  return `${startYear} - ${endYear}`;
+};
+
+const ExperienceItem = ({ exp, isStreaming = false }: { exp: Experience; isStreaming?: boolean }) => {
+  const dateRange = formatDateRange(exp);
+
+  return (
+    <div className="border-l-2 border-primary/30 pl-3 py-2">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="font-medium">{exp.title || (isStreaming ? "..." : "Untitled")}</p>
+          <p className="text-sm text-muted-foreground">{exp.company || (isStreaming ? "..." : "Unknown")}</p>
+        </div>
+        {dateRange && (
+          <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">
+            {dateRange}
+          </span>
+        )}
+      </div>
+      {exp.description && (
+        <p className="text-sm mt-1 text-muted-foreground">{exp.description}</p>
+      )}
+      {exp.technologies.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-2">
+          {exp.technologies.map((tech, idx) => (
+            <span
+              key={idx}
+              className="px-1.5 py-0.5 bg-secondary/50 text-secondary-foreground rounded text-xs"
+            >
+              {tech}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const EducationItem = ({ edu }: { edu: Education }) => {
+  const dateStr = edu.endYear ? String(edu.endYear) : "";
+
+  return (
+    <div className="border-l-2 border-blue-500/30 pl-3 py-2">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="font-medium">{edu.degree}</p>
+          <p className="text-sm text-muted-foreground">{edu.institution}</p>
+          {edu.fieldOfStudy && (
+            <p className="text-xs text-muted-foreground">{edu.fieldOfStudy}</p>
+          )}
+        </div>
+        {dateStr && (
+          <span className="text-xs text-muted-foreground ml-2">{dateStr}</span>
+        )}
+      </div>
+      <div className="flex gap-2 mt-1">
+        <span className="text-xs px-1.5 py-0.5 bg-blue-500/10 text-blue-600 rounded">
+          {edu.level}
+        </span>
+        <span className="text-xs px-1.5 py-0.5 bg-muted text-muted-foreground rounded">
+          {edu.status}
+        </span>
+      </div>
+    </div>
+  );
+};
+
 const ResumeContent = ({ data, isStreaming }: ResumeContentProps) => {
+  const hasEducation = data.education && data.education.length > 0;
+  const hasCertifications = data.certifications && data.certifications.length > 0;
+  const hasLanguages = data.languages && data.languages.length > 0;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -34,11 +123,31 @@ const ResumeContent = ({ data, isStreaming }: ResumeContentProps) => {
           </h2>
         </div>
 
-        {data.email && (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Mail className="h-4 w-4" />
-            <span>{data.email}</span>
-          </div>
+        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+          {data.email && (
+            <div className="flex items-center gap-1">
+              <Mail className="h-4 w-4" />
+              <span>{data.email}</span>
+            </div>
+          )}
+          {data.phone && (
+            <div className="flex items-center gap-1">
+              <Phone className="h-4 w-4" />
+              <span>{data.phone}</span>
+            </div>
+          )}
+          {data.location && (
+            <div className="flex items-center gap-1">
+              <MapPin className="h-4 w-4" />
+              <span>{data.location}</span>
+            </div>
+          )}
+        </div>
+
+        {data.summary && (
+          <p className="text-sm text-muted-foreground mt-2 border-l-2 border-muted pl-3">
+            {data.summary}
+          </p>
         )}
       </div>
 
@@ -53,19 +162,42 @@ const ResumeContent = ({ data, isStreaming }: ResumeContentProps) => {
         </div>
 
         {data.experience && data.experience.length > 0 ? (
-          <ul className="space-y-2 ml-7">
+          <div className="space-y-3 ml-7">
             {data.experience.map((exp, idx) => (
-              <li key={idx} className="text-sm border-l-2 border-primary/30 pl-3 py-1">
-                {exp}
-              </li>
+              <ExperienceItem key={idx} exp={exp} isStreaming={isStreaming ?? false} />
             ))}
-          </ul>
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground ml-7 italic">
             {isStreaming ? "Extracting experience..." : "No experience listed"}
           </p>
         )}
       </div>
+
+      {/* Education */}
+      {(hasEducation || isStreaming) && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <BookOpen className="h-5 w-5 text-muted-foreground" />
+            <h3 className="text-lg font-semibold">Education</h3>
+            {isStreaming && (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            )}
+          </div>
+
+          {hasEducation ? (
+            <div className="space-y-3 ml-7">
+              {data.education.map((edu, idx) => (
+                <EducationItem key={idx} edu={edu} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground ml-7 italic">
+              {isStreaming ? "Extracting education..." : "No education listed"}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Skills */}
       <div className="space-y-3">
@@ -83,8 +215,14 @@ const ResumeContent = ({ data, isStreaming }: ResumeContentProps) => {
               <span
                 key={idx}
                 className="px-2 py-1 bg-secondary text-secondary-foreground rounded-md text-sm"
+                title={skill.category}
               >
-                {skill}
+                {skill.name}
+                {skill.yearsExperience && (
+                  <span className="text-xs text-muted-foreground ml-1">
+                    ({skill.yearsExperience}y)
+                  </span>
+                )}
               </span>
             ))}
           </div>
@@ -94,6 +232,74 @@ const ResumeContent = ({ data, isStreaming }: ResumeContentProps) => {
           </p>
         )}
       </div>
+
+      {/* Certifications */}
+      {(hasCertifications || isStreaming) && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Award className="h-5 w-5 text-muted-foreground" />
+            <h3 className="text-lg font-semibold">Certifications</h3>
+            {isStreaming && (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            )}
+          </div>
+
+          {hasCertifications ? (
+            <div className="space-y-2 ml-7">
+              {data.certifications.map((cert, idx) => (
+                <div key={idx} className="flex items-center justify-between text-sm">
+                  <div>
+                    <span className="font-medium">{cert.name}</span>
+                    {cert.issuer && (
+                      <span className="text-muted-foreground"> - {cert.issuer}</span>
+                    )}
+                  </div>
+                  {cert.year && (
+                    <span className="text-xs text-muted-foreground">{cert.year}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground ml-7 italic">
+              {isStreaming ? "Extracting certifications..." : "No certifications listed"}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Languages */}
+      {(hasLanguages || isStreaming) && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Globe className="h-5 w-5 text-muted-foreground" />
+            <h3 className="text-lg font-semibold">Languages</h3>
+            {isStreaming && (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            )}
+          </div>
+
+          {hasLanguages ? (
+            <div className="flex flex-wrap gap-2 ml-7">
+              {data.languages.map((lang, idx) => (
+                <span
+                  key={idx}
+                  className="px-2 py-1 bg-green-500/10 text-green-600 rounded-md text-sm"
+                >
+                  {lang.name}
+                  <span className="text-xs text-green-500/70 ml-1">
+                    ({lang.proficiency})
+                  </span>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground ml-7 italic">
+              {isStreaming ? "Extracting languages..." : "No languages listed"}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 };

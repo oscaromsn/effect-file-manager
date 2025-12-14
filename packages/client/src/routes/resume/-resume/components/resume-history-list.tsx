@@ -9,8 +9,12 @@ import {
   selectResumeAtom,
   clearSelectionAtom,
   activeParsingAtom,
+  selectedPositionAtom,
+  selectedCompanyAtom,
   getScoreTierColor,
   type ResumeAnalysis,
+  type PositionType,
+  type CompanyProfile,
 } from "../resume-atoms";
 import { cn } from "@/lib/cn";
 
@@ -18,31 +22,37 @@ type ResumeItemProps = {
   resume: ResumeAnalysis;
   isSelected: boolean;
   onSelect: () => void;
+  position: PositionType;
+  company: CompanyProfile;
 };
 
-const ResumeItem = ({ resume, isSelected, onSelect }: ResumeItemProps) => (
-  <button
-    onClick={onSelect}
-    className={cn(
-      "w-full text-left p-3 rounded-lg border transition-colors",
-      isSelected
-        ? "border-primary bg-primary/5"
-        : "border-border hover:border-primary/50",
-    )}
-  >
-    <div className="flex items-start justify-between gap-2">
-      <div className="min-w-0 flex-1">
-        <p className="font-medium truncate text-sm">{resume.data.name}</p>
-        <p className="text-xs text-muted-foreground truncate">
-          {resume.fileName}
-        </p>
+const ResumeItem = ({ resume, isSelected, onSelect, position, company }: ResumeItemProps) => {
+  const contextScore = resume.data.scoringMatrix[position][company].score;
+
+  return (
+    <button
+      onClick={onSelect}
+      className={cn(
+        "w-full text-left p-3 rounded-lg border transition-colors",
+        isSelected
+          ? "border-primary bg-primary/5"
+          : "border-border hover:border-primary/50",
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="font-medium truncate text-sm">{resume.data.name}</p>
+          <p className="text-xs text-muted-foreground truncate">
+            {resume.fileName}
+          </p>
+        </div>
+        <span className={cn("text-sm font-semibold", getScoreTierColor(contextScore))}>
+          {contextScore}
+        </span>
       </div>
-      <span className={cn("text-sm font-semibold", getScoreTierColor(resume.score))}>
-        {resume.score}
-      </span>
-    </div>
-  </button>
-);
+    </button>
+  );
+};
 
 type ParsingItemProps = {
   fileName: string;
@@ -77,6 +87,8 @@ export const ResumeHistoryList = () => {
   const localResumes = useAtomValue(localResumesAtom);
   const selectedId = useAtomValue(selectedResumeIdAtom);
   const activeParsing = useAtomValue(activeParsingAtom);
+  const position = useAtomValue(selectedPositionAtom);
+  const company = useAtomValue(selectedCompanyAtom);
   const selectResume = useAtomSet(selectResumeAtom);
   const clearSelection = useAtomSet(clearSelectionAtom);
 
@@ -125,6 +137,8 @@ export const ResumeHistoryList = () => {
                 resume={resume}
                 isSelected={isSelected}
                 onSelect={() => selectResume(resume.id)}
+                position={position}
+                company={company}
               />
             );
           })}
@@ -148,6 +162,8 @@ export const ResumeHistoryList = () => {
               resume={resume}
               isSelected={selectedId === resume.id}
               onSelect={() => selectResume(resume.id)}
+              position={position}
+              company={company}
             />
           ))
         ) : (
