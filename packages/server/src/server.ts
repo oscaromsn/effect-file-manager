@@ -22,6 +22,7 @@ import { createServer } from "node:http";
 import { CurrentUserRpcMiddlewareLive } from "./public/auth/auth-middleware-live.js";
 import { EventStreamRpcLive } from "./public/event-stream/event-stream-rpc-live.js";
 import { FilesRpcLive } from "./public/files/files-rpc-live.js";
+import { ResumeRpcLive } from "./public/resume/resume-rpc-live.js";
 
 const TracerLive = Layer.unwrapEffect(
   Effect.gen(function* () {
@@ -117,7 +118,7 @@ const RpcRouter = RpcServer.layerHttpRouter({
   spanPrefix: "rpc",
   disableFatalDefects: true,
 }).pipe(
-  Layer.provide(Layer.mergeAll(EventStreamRpcLive, FilesRpcLive, RpcLoggerLive)),
+  Layer.provide(Layer.mergeAll(EventStreamRpcLive, FilesRpcLive, ResumeRpcLive, RpcLoggerLive)),
   Layer.provide(CurrentUserRpcMiddlewareLive),
   Layer.provide(RpcSerialization.layerNdjson),
 );

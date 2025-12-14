@@ -28,3 +28,17 @@ CREATE INDEX idx_files_user_id ON files (user_id);
 CREATE INDEX idx_files_folder_id ON files (folder_id);
 CREATE INDEX idx_files_uploadthing_key ON files (uploadthing_key);
 CREATE INDEX idx_file_folders_user_id ON file_folders (user_id);
+
+CREATE TABLE
+  resumes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
+    user_id UUID NOT NULL,
+    file_id UUID NOT NULL REFERENCES files (id) ON DELETE CASCADE,
+    file_name TEXT NOT NULL,
+    parsed_data JSONB NOT NULL,
+    score INTEGER NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now ()
+  );
+
+CREATE INDEX idx_resumes_user_id ON resumes (user_id);
+CREATE INDEX idx_resumes_created_at ON resumes (created_at);
