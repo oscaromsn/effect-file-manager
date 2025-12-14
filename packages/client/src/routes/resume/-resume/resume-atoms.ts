@@ -11,6 +11,10 @@ import {
   type PartialResumeData as DomainPartialResumeData,
   type ResumeAnalysis,
   type ResumeId,
+  type PositionType,
+  type CompanyProfile,
+  POSITION_TYPES,
+  COMPANY_PROFILES,
 } from "@example/domain/api/resume/resume-rpc";
 import {
   InitiateUploadRpc,
@@ -27,7 +31,8 @@ import * as Stream from "effect/Stream";
 
 // Re-export for components
 export type PartialResumeData = DomainPartialResumeData;
-export type { ResumeAnalysis };
+export type { ResumeAnalysis, PositionType, CompanyProfile };
+export { POSITION_TYPES, COMPANY_PROFILES };
 
 // ================================
 // Api Service
@@ -126,6 +131,14 @@ export const resumeListAtom = runtime.atom(
 // ================================
 
 export const selectedResumeIdAtom = Atom.make<ResumeId | null>(null);
+
+// ================================
+// Context Filter State
+// ================================
+
+// Default: FULLSTACK + SCALEUP (general purpose defaults)
+export const selectedPositionAtom = Atom.make<PositionType>("FULLSTACK");
+export const selectedCompanyAtom = Atom.make<CompanyProfile>("SCALEUP");
 
 // ================================
 // Active Parsing State
@@ -240,15 +253,15 @@ export const clearSelectionAtom = runtime.fn(
 // ================================
 
 export const getScoreTierColor = (score: number): string => {
-  if (score >= 1000) return "text-green-600";
-  if (score >= 800) return "text-yellow-600";
+  if (score >= 800) return "text-green-600";
+  if (score >= 500) return "text-yellow-600";
   return "text-red-600";
 };
 
 export const getScoreTierLabel = (score: number): string => {
-  if (score >= 1000) return "Expert";
-  if (score >= 800) return "Experienced";
-  return "Entry Level";
+  if (score >= 800) return "Strong Match";
+  if (score >= 500) return "Potential Match";
+  return "Needs Development";
 };
 
 // ================================
