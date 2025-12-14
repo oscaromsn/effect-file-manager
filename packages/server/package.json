@@ -17,7 +17,8 @@
     "dev": "dotenv -e ../../.env -- tsx --watch src/server.ts",
     "start": "dotenv -e ../../.env -- node build/esm/server.js",
     "db:migrate": "dotenv -e ../../.env -- tsx ./src/db/scripts/migrator.ts",
-    "db:reset": "dotenv -e ../../.env -- tsx ./src/db/scripts/reset-database.ts"
+    "db:reset": "dotenv -e ../../.env -- tsx ./src/db/scripts/reset-database.ts",
+    "baml:generate": "bunx baml-cli generate"
   },
   "dependencies": {
     "@effect/opentelemetry": "*",
