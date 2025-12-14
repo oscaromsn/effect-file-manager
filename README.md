@@ -21,7 +21,7 @@ pnpm install
 
 # Copy environment variables
 cp .env.example .env
-# Fill in UPLOADTHING_SECRET with your UploadThing API key
+# Fill in UPLOADTHING_TOKEN with your UploadThing v7 token from the dashboard
 
 # Start PostgreSQL and Jaeger
 docker compose up -d

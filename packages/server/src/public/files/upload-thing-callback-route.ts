@@ -54,7 +54,7 @@ export const UploadThingCallbackRoute = HttpLayerRouter.use(
         const text = yield* request.text;
 
         const computedHash = crypto
-          .createHmac("sha256", Redacted.value(envVars.UPLOADTHING_SECRET))
+          .createHmac("sha256", Redacted.value(envVars.UPLOADTHING_API_KEY))
           .update(text)
           .digest("hex");
 
