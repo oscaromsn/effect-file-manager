@@ -435,6 +435,32 @@ export class FilesRepo extends Effect.Service<FilesRepo>()(
           return Arr.map(req.uploadthingKeys, (key) => resultsByKey.get(key) ?? null);
         }).pipe(Effect.orDie, Effect.withSpan("FilesRepo.getFilesByKeys"));
 
+      const findById = (req: { fileId: UploadedFileId; userId: UserId }) =>
+        SqlSchema.findOne({
+          Request: Schema.Struct({
+            fileId: UploadedFileId,
+            userId: UserId,
+          }),
+          Result: UploadedFile,
+          execute: (req) => sql`
+            SELECT
+              f.id,
+              f.name,
+              f.mime_type AS "mimeType",
+              f.size::text,
+              f.folder_id AS "folderId",
+              f.uploadthing_key AS "uploadthingKey",
+              f.uploadthing_url AS "uploadthingUrl",
+              f.created_at AS "createdAt",
+              f.updated_at AS "updatedAt"
+            FROM
+              public.files f
+            WHERE
+              f.id = ${req.fileId}
+              AND f.user_id = ${req.userId}
+          `,
+        })(req).pipe(Effect.orDie, Effect.withSpan("FilesRepo.findById"));
+
       return {
         listPaginated,
         insertFolder,
@@ -443,6 +469,7 @@ export class FilesRepo extends Effect.Service<FilesRepo>()(
         deleteFolders,
         moveFiles,
         getFilesByKeys,
+        findById,
       } as const;
     }),
   },
