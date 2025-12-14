@@ -5,7 +5,6 @@ node_modules/
 tmp/
 dist/
 build/
-docs/
 .direnv/
 .idea/
 .env
@@ -25,3 +24,5 @@ AGENTS.md
 GEMINI.md
 .claude/settings.local.json
 CLAUDE.local.md
+.context
+.dev
