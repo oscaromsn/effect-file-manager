@@ -127,9 +127,11 @@ packages/
 | `pnpm lint` | Run Oxlint and ESLint |
 | `pnpm test` | Run Vitest suite |
 
-## Acknowledges
+## Acknowledgements
 
-Huge thanks to Lucas Patron for his amazing video tutorials on how to build type-safe, resilient applications and the Uploadthing integration demo (which is the foundation of this project). Also huge thanks to the Effect community as a whole - it's being a long way to learn new patterns of error handling and concurrency, but I have never seen such a talented and helpful community (Effect Hours by Kit and Max have enlightned me many times haha)
+Huge thanks to Lucas Barake for his [amazing video tutorials](https://youtu.be/-23f_B1fnKA?si=eR7Fjk02fIzAL6Zg) on how to build type-safe, resilient applications and the Uploadthing integration demo (which is the foundation of this project). Also huge thanks to the Effect community as a whole - it's being a long way to learn new patterns of error handling and concurrency, but I have never seen such a talented and helpful community ([Effect Office Hours](https://www.youtube.com/watch?v=qU5z5VqIdxg&list=PLDf3uQLaK2B_0hEiHT82cv-DotrtD6Bhi) by [Kit](https://x.com/kitlangton) and [Max](https://x.com/imax153) have enlightned me many times haha).
+
+Last but not least, [🦄 ai that works](https://www.youtube.com/playlist?list=PLi60mUelRAbFqfgymVfZttlkIyt0XHZjt) by [dex](https://x.com/dexhorthy) and [hellovai](https://x.com/vaibcode) as always.
 
 ## License
 
