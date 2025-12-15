@@ -2,126 +2,116 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Overview
-
-Effect-based file manager demonstrating file uploads with UploadThing, real-time sync via WebSocket RPC, and React state management with @effect-atom/atom-react.
-
-## Commands
+## Build & Development Commands
 
 ```bash
-# Install dependencies
+# Install dependencies (uses pnpm 10.3.0 via Corepack)
 pnpm install
 
-# Development (run in separate terminals)
+# Start infrastructure (PostgreSQL + Jaeger)
+docker compose up -d
+
+# Database setup
+pnpm db:migrate          # Apply migrations
+pnpm db:reset            # Drop and recreate schema
+
+# Generate BAML TypeScript client (required after .baml changes)
+pnpm baml:generate
+
+# Development servers (run in separate terminals)
 pnpm dev:server          # http://localhost:3001
 pnpm dev:client          # http://localhost:5173
 
-# Build (builds domain first, then client and server)
-pnpm build
+# Validation
+pnpm check               # TypeScript type checking (tsc -b)
+pnpm lint                # Run oxlint + eslint
+pnpm lint:fix            # Auto-fix lint issues
+pnpm test                # Run all tests
+pnpm test:watch          # Watch mode
 
-# Type checking
-pnpm typecheck           # or: pnpm check
-
-# Linting
-pnpm lint                # runs both oxlint and eslint
-pnpm lint:fix            # auto-fix lint issues
-
-# Testing
-pnpm test                # run all tests
-pnpm test:watch          # watch mode
-
-# Run single test file
-cd packages/server && pnpm test src/public/files/files-repo.test.ts
-
-# Database
-pnpm db:migrate          # run migrations
-pnpm db:reset            # reset database
-
-# Docker (PostgreSQL + Jaeger)
-docker compose up -d
+# Single package test
+pnpm --filter @example/server test
+pnpm --filter @example/client test
+pnpm --filter @example/domain test
 ```
 
-## Architecture
+## Architecture Overview
+
+This is an Effect-based full-stack application with AI-powered resume parsing. The philosophy is using LLMs for structured data extraction, then applying deterministic scoring algorithms.
 
 ### Monorepo Structure (pnpm workspaces)
 
 ```
+docs/          # Project documentation (check it when doubts arises)
 packages/
-  domain/    # Shared types, Effect Schemas, RPC contract definitions
-  server/    # Node.js server with Effect, PostgreSQL, UploadThing
-  client/    # React + Vite client with TanStack Router
+├── domain/    # Shared RPC contracts + Effect Schemas (no runtime deps)
+├── server/    # Node.js Effect runtime, BAML LLM integration, PostgreSQL
+└── client/    # React 19, TanStack Router, @effect-atom/atom-react
 ```
 
-### RPC Architecture
+**Dependency rule:** Domain ← Server, Domain ← Client (unidirectional, no cycles)
 
-**Contract-first approach**: RPC endpoints are defined in `@example/domain` using `@effect/rpc`:
+### Key Architectural Patterns
 
-- `packages/domain/src/api/files/files-rpc.ts` - File operations RPC definitions
-- `packages/domain/src/api/event-stream-rpc.ts` - Real-time event stream
-- `packages/domain/src/domain-api.ts` - Combined RPC group (`DomainRpc`)
+**Contract-First RPC (@effect/rpc)**
+- RPC contracts defined in `packages/domain/src/api/`
+- Server implements handlers in `packages/server/src/public/**/*-rpc-live.ts`
+- Client consumes via `DomainRpcClient` in atoms
+- WebSocket transport with NDJSON codec for streaming
 
-**Server implementation**: RPC handlers use `RpcGroup.toLayer()`:
-- `packages/server/src/public/files/files-rpc-live.ts` - Files RPC implementation
-- Handlers access `CurrentUser` from RPC middleware context (`Policy.CurrentUser`)
+**Effect Services Pattern**
+- Services use `Effect.Service<T>()` with dependencies and effects
+- Layers compose via `Layer.provide()` / `Layer.mergeAll()`
+- All errors are typed Effect errors (TaggedError)
+- RPC groups merged: `DomainRpc extends EventStreamRpc.merge(FilesRpc).merge(ResumeRpc)`
 
-**Client consumption**: WebSocket client with NDJSON serialization:
-- `packages/client/src/lib/domain-rpc-client.ts` - `DomainRpcClient` service
+**State Management (@effect-atom/atom-react)**
+- Atoms defined alongside routes: `routes/resume/-resume/resume-atoms.ts`
+- Runtime created with `makeAtomRuntime(Layer.mergeAll(...))`
+- Atoms wrap Effects for async operations: `runtime.atom(Effect.gen(...))`
+- Tagged enums for state phases: `Data.taggedEnum<ParsingPhase>()`
 
-### State Management (Client)
+**BAML LLM Integration**
+- Schema definitions in `packages/server/baml_src/*.baml`
+- Generated client outputs to `packages/server/baml_client/` (gitignored)
+- Streaming extraction: `b.stream.ExtractResume(pdf)` → partial updates
+- Client configs support OpenAI, Anthropic, fallback strategies
 
-Uses `@effect-atom/atom-react` for reactive Effect-based state:
+### Important Files
 
-- `packages/client/src/lib/atom.ts` - Atom runtime configuration
-- `packages/client/src/lib/event-stream-atoms.tsx` - Real-time event subscription
-- `packages/client/src/routes/files/-files/files-atoms/files-atoms.tsx` - File state atoms
+| Purpose | Location |
+|---------|----------|
+| RPC contracts | `packages/domain/src/api/*/` |
+| Merged RPC group | `packages/domain/src/domain-api.ts` |
+| Server entry | `packages/server/src/server.ts` |
+| RPC implementations | `packages/server/src/public/**/*-rpc-live.ts` |
+| Scoring algorithm | `packages/server/src/public/resume/scoring-logic.ts` |
+| BAML schemas | `packages/server/baml_src/*.baml` |
+| Client atoms | `packages/client/src/routes/**/*-atoms.ts` |
+| RPC client | `packages/client/src/lib/domain-rpc-client.ts` |
 
-Pattern: Atoms wrap Effect computations and streams, integrating with React via hooks like `useAtomValue`.
+## Code Style Rules
 
-### Database Layer
+**Custom ESLint Rules (enforced):**
+1. `enforce-react-namespace`: Use `import React from 'react'` + `React.useState`, not named imports
+2. `no-deep-relative-imports`: Use `@/` alias for imports >1 level up (client/server)
+3. `no-relative-import-outside-package`: Cross-package imports use `@example/domain`, never relative paths
 
-- `packages/server/src/db/pg-live.ts` - PostgreSQL client layer (`PgLive`)
-- `packages/server/src/public/files/files-repo.ts` - Repository pattern with `@effect/sql`
-- Testing uses `@testcontainers/postgresql` with schema dump application
+**Effect Patterns:**
+- Use `Effect.gen(function* () { ... })` for sequential operations
+- Errors via `Schema.TaggedError<T>()("ErrorName", { ... })`
+- Services via `Effect.Service<T>()("ServiceName", { effect: Effect.gen(...) })`
+- Streaming via `Stream.runForEach(stream, (event) => ...)`
 
-### Testing Patterns
+## Environment Variables
 
-Uses `@effect/vitest` for Effect-integrated tests:
+Required in `.env` (copy from `.env.example`):
+- `DATABASE_URL`: PostgreSQL connection string
+- `UPLOADTHING_TOKEN`: UploadThing v7 token
+- `OPENAI_API_KEY`: For resume parsing (or configure Anthropic in `baml_src/clients.baml`)
 
-```typescript
-it.layer(Live, { timeout: "30 seconds" })("TestSuite", (it) => {
-  it.effect("test name", Effect.fn(function* () {
-    const service = yield* SomeService;
-    // assertions
-  }));
-});
-```
+## External Services
 
-## Key Patterns
-
-**Effect Services**: Services use `Effect.Service` class pattern with `Default` layers:
-```typescript
-class FilesRepo extends Effect.Service<FilesRepo>()("FilesRepo", {
-  dependencies: [PgLive],
-  effect: Effect.gen(function* () { /* ... */ })
-}) {}
-```
-
-**RPC Middleware**: Auth via `CurrentUserRpcMiddleware` providing `CurrentUser` context.
-
-**Import Aliases**:
-- Server: `@/` maps to `src/`
-- Client: `@/` maps to `src/`
-
-## Custom ESLint Rules
-
-- `no-relative-import-outside-package` - Prevents relative imports crossing package boundaries
-- `enforce-react-namespace` - Requires `React.*` namespace usage (no bare imports)
-- `no-deep-relative-imports` - Limits relative import depth
-
-## Environment Setup
-
-Copy `.env.example` to `.env` and configure:
-- `DATABASE_URL` - PostgreSQL connection string
-- `UPLOADTHING_TOKEN` - UploadThing v7 API token
-- `OTLP_URL` - OpenTelemetry collector (Jaeger)
-- `VITE_API_URL` - Client API endpoint
+- **PostgreSQL**: Port 5432 (via docker-compose)
+- **Jaeger UI**: http://localhost:16686 (traces viewable via trace ID in server logs)
+- **UploadThing**: File upload/storage service
