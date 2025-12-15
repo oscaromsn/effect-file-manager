@@ -7,7 +7,7 @@ It's a full-stack demonstration application built with **Effect**, featuring an 
 This repository demonstrates how to build production-grade applications with the Effect ecosystem. It combines two major domains:
 
 1.  **File Management:** Resumable uploads via UploadThing, folder organization, and multi-user isolation.
-2.  **AI Resume Analysis:** PDF parsing, structured entity extraction using BAML (BoundaryML), and context-aware scoring based on job roles and company profiles.
+2.  **AI Resume Analysis:** PDF parsing, structured entity extraction using BAML (Basically A Made-Up Language), and context-aware scoring based on job roles and company profiles.
 
 ## Key Features
 
@@ -109,7 +109,7 @@ packages/
 ### Technology Stack
 
 -   **Runtime:** [Effect](https://effect.website) (TypeScript)
--   **AI/LLM:** [BAML](https://www.boundaryml.com/) (BoundaryML)
+-   **AI/LLM:** [BAML](https://www.boundaryml.com/) (Boundary)
 -   **RPC:** @effect/rpc (WebSocket/NDJSON)
 -   **Frontend:** React 19, Tailwind v4, TanStack Router
 -   **State:** @effect-atom/atom-react
